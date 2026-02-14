@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Insight Assistant</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: background-image 1.2s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1;
+        }
+
+        .card {
+            position: relative;
+            background: #ffffff;
+            width: 520px;
+            max-height: 90vh;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            z-index: 2;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow-y: auto;
+        }
+
+        .card.expanded {
+            width: 850px;
+        }
+
+        h1 { text-align: center; margin-bottom: 6px; color: #333; }
+        
+        .subtitle {
+            text-align: center;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-family: 'Poppins', sans-serif;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        textarea { height: 80px; resize: none; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover { background: #5a6fd6; }
+
+        .result { margin-top: 25px; opacity: 0; transition: opacity 0.5s; }
+        .result.show { opacity: 1; }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            color: #2d3748;
+            font-weight: 600;
+            border-bottom: 2px solid #edf2f7;
+            padding-bottom: 5px;
+        }
+
+        .insight-msg {
+            background: #f0f4ff;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+
+        ul { padding-left: 20px; margin: 10px 0; }
+        li { margin-bottom: 5px; font-size: 14px; color: #4a5568; }
+
+        .exercise-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .exercise-images div {
+            background: #fff;
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            text-align: center;
+            border: 1px solid #eee;
+        }
+
+        .exercise-images img {
+            width: 100%;
+            height: 120px;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .exercise-images p { font-size: 12px; margin-top: 8px; font-weight: 500; }
+
+        .note {
+            font-size: 11px;
+            color: #e34c15;
+            text-align: center;
+            margin-top: 25px;
+        }
+
+        .card::-webkit-scrollbar { width: 6px; }
+        .card::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
+    </style>
+</head>
+
+<body>
+
+<div class="overlay"></div>
+
+<div class="card" id="appCard">
+    <h1>Health Insight</h1>
+    <p class="subtitle">AI-Powered Guidance for Hormonal & Metabolic Wellness</p>
+    <div id="inputForm">
+        <input type="number" id="age" placeholder="Enter Age">
+        <input type="number" id="weight" placeholder="Enter Weight (kg)">
+        <textarea id="description" placeholder="Describe symptoms (e.g., weight gain, thirst, irregular periods...)"></textarea>
+        <button onclick="predict()">Check Health Insight</button>
+    </div>
+
+    <div class="result" id="output"></div>
+
+    <div class="note">
+        Disclaimer: Educational tool only. Not a medical diagnosis.
+    </div>
+</div>
+
+<script>
+/* BACKGROUND SLIDER */
+const backgrounds = [
+    "static/pictures/back_image.png",
+    "static/pictures/back_image1.png",
+    "static/pictures/food1.jpg"
+];
+
+let currentBg = 0;
+
+function changeBackground() {
+    document.body.style.backgroundImage = `url("${backgrounds[currentBg]}")`;
+    currentBg = (currentBg + 1) % backgrounds.length;
+}
+
+window.onload = () => {
+    changeBackground();
+    setInterval(changeBackground, 6000);
+};
+
+/* PREDICT FUNCTION  */
+async function predict() {
+    const age = document.getElementById("age").value;
+    const weight = document.getElementById("weight").value;
+    const description = document.getElementById("description").value;
+
+    if (!age || !weight) {
+        alert("Please provide at least Age and Weight.");
+        return;
+    }
+
+    try {
+        const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ age, weight, description })
+        });
+
+        const data = await response.json();
+        const msg = data.message.toLowerCase();
+        let exerciseHTML = "";
+
+        /* EXERCISE IMAGE LOGIC */
+        if (msg.includes("hormonal") || msg.includes("pcod")) {
+            exerciseHTML = `
+                <div class="exercise-images">
+                    <div><img src="static/pictures/pcod1.png"><p>Yoga Basics</p></div>
+                    <div><img src="static/pictures/pcod6.png"><p>Butterfly Pose</p></div>
+                    <div><img src="static/pictures/pcod4.png"><p>Malasana</p></div>
+                    <div><img src="static/pictures/pcod5.png"><p>Bhujangasana</p></div>
+                </div>`;
+        } 
+        else if (msg.includes("blood sugar") || msg.includes("diabetes")) {
+            exerciseHTML = `
+                <div class="exercise-images">
+                    <div><img src="static/pictures/diabities.png"><p>Stretching</p></div>
+                    <div><img src="static/pictures/diabieties2.png"><p>Cycling</p></div>
+                    <div><img src="static/pictures/diabieties1.png"><p>Walking</p></div>
+                </div>`;
+        } 
+        else if (msg.includes("thyroid")) {
+            exerciseHTML = `
+                <div class="exercise-images">
+                    <div><img src="static/pictures/thyroid1.png"><p>Pose-1</p></div>
+                    <div><img src="static/pictures/thyroid2.png"><p>Pose-2</p></div>
+                    <div><img src="static/pictures/thyroid2.png"><p>Pose-3</p></div>
+                    <div><img src="static/pictures/thyroid2.png"><p>Pose-4</p></div>
+                    <div><img src="static/pictures/thyroid2.png"><p>Pose-5</p></div>
+                </div>`;
+        }
+        else if(msg.includes("pcos")){
+            exerciseHTML = `
+                <div class="exercise-images">
+                    <div><img src="static/pictures/pcod1.png"><p>Yoga Basics</p></div>
+                    <div><img src="static/pictures/pcod6.png"><p>Butterfly Pose</p></div>
+                    <div><img src="static/pictures/pcod4.png"><p>Malasana</p></div>
+                    <div><img src="static/pictures/pcod5.png"><p>Bhujangasana</p></div>
+                    <div><img src="static/pictures/diabities.png"><p>Stretching</p></div>
+                </div>`;
+        }
+        else {
+            exerciseHTML = `
+                <div class="exercise-images">
+                    <div><img src="static/pictures/diabities.png"><p>Stretching</p></div>
+                </div>`;
+        }
+
+        const outputDiv = document.getElementById("output");
+        const card = document.getElementById("appCard");
+        
+        card.classList.add("expanded");
+        outputDiv.classList.add("show");
+
+        outputDiv.innerHTML = `
+            <div class="insight-msg">
+                <strong>Status:</strong> ${data.message}
+            </div>
+
+            <p style="background:#edf2f7; padding:8px 12px; border-radius:6px; font-size:14px;">
+                 <b>Water Intake Target:</b> ${data.water}
+            </p>
+
+            <div class="section-title">
+                <span class="material-icons" style="color:#48bb78">eco</span>
+                <span>Recommended Vegetables</span>
+            </div>
+            <ul>${data.vegetables.map(v => `<li>${v}</li>`).join("")}</ul>
+
+            <div class="section-title">
+                <span class="material-icons" style="color:#f6ad55">local_grocery_store</span>
+                <span>Recommended Fruits</span>
+            </div>
+            <ul>${data.fruits.map(f => `<li>${f}</li>`).join("")}</ul>
+
+            <div class="section-title">
+                <span class="material-icons" style="color:#e53e3e">block</span>
+                <span>Foods to Avoid</span>
+            </div>
+            <ul>${data.avoid.map(a => `<li>${a}</li>`).join("")}</ul>
+
+            <div class="section-title">
+                <span class="material-icons" style="color:#4299e1">directions_walk</span>
+                <span>Exercise Plan</span>
+            </div>
+            ${exerciseHTML}
+
+            <div class="section-title">
+                <span class="material-icons" style="color:#9f7aea">self_improvement</span>
+                <span>Daily Lifestyle</span>
+            </div>
+            <ul>${data.lifestyle.map(l => `<li>${l}</li>`).join("")}</ul>
+            
+            <button onclick="window.location.reload()" style="margin-top:20px; background:#cbd5e0; color:#4a5568;">New Check</button>
+        `;
+
+        document.getElementById("inputForm").style.display = "none";
+
+    } catch (error) {
+        console.error(error);
+        document.getElementById("output").innerHTML = "<p style='color:red; text-align:center;'>Backend not running. Please start your Flask server.</p>";
+        document.getElementById("output").classList.add("show");
+    }
+}
+</script>
+
+</body>
+</html>
