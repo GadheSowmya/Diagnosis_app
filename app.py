@@ -16,7 +16,7 @@ def home():
 import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-csv_path = os.path.join(BASE_DIR, "health_data.csv")
+csv_path = os.path.join(BASE_DIR, "Data_set", "health_data.csv")
 
 df = pd.read_csv(csv_path)
 
